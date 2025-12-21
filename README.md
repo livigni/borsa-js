@@ -16,7 +16,7 @@ Per utilizzare questo progetto, è necessario avere Node.js e npm installati.
 
 1.  Clona il repository:
     ```bash
-    git clone <URL_DEL_TUO_REPOSITORY>
+    git clone https://github.com/livigni/borsa-js.git
     ```
 2.  Entra nella directory del progetto:
     ```bash
