@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Borsa Italiana Scraper</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <style>
+        body { font-family: sans-serif; }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input { width: 100%; padding: 8px; box-sizing: border-box; }
+        button { padding: 10px 15px; }
+        pre { background-color: #f4f4f4; padding: 10px; border: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Borsa Italiana Scraper</h1>
+
+        <div class="form-group">
+            <label for="price-isin">ISIN Prezzo</label>
+            <input type="text" id="price-isin" placeholder="Es: IT0005497000">
+            <button onclick="fetchPrice()">Ottieni Prezzo</button>
+            <h3>Risultati:</h3>
+            <pre id="price-result"></pre>
+        </div>
+
+        <div class="form-group">
+            <label for="historical-isin">ISIN Dati Storici</label>
+            <input type="text" id="historical-isin" placeholder="Es: IT0005497000">
+            <label for="historical-ticker">Ticker Dati Storici</label>
+            <input type="text" id="historical-ticker" placeholder="Es: ENI" required>
+            <button onclick="fetchHistoricalData()">Ottieni Dati Storici</button>
+            <h3>Grafico:</h3>
+            <canvas id="historical-chart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        let historicalChart;
+
+        async function fetchPrice() {
+            const isin = document.getElementById('price-isin').value;
+            const resultElement = document.getElementById('price-result');
+            resultElement.textContent = 'Caricamento...';
+
+            if (!isin) {
+                resultElement.textContent = 'Errore: ISIN è obbligatorio.';
+                return;
+            }
+
+            try {
+                // Step 1: Get symbols to find out the type
+                const symbolsResponse = await fetch(`/api/symbols/${isin}`);
+                const symbols = await symbolsResponse.json();
+
+                if (!symbols || symbols.length === 0) {
+                    resultElement.textContent = `Errore: Nessun simbolo trovato per ISIN ${isin}`;
+                    return;
+                }
+                const type = symbols[0].subtype;
+
+                // Step 2: Get price with the retrieved type
+                const priceResponse = await fetch(`/api/price/${isin}/${type}`);
+                const data = await priceResponse.json();
+                resultElement.textContent = JSON.stringify(data, null, 2);
+
+            } catch (error) {
+                resultElement.textContent = `Errore: ${error.message}`;
+            }
+        }
+
+        async function fetchHistoricalData() {
+            const isin = document.getElementById('historical-isin').value;
+            const ticker = document.getElementById('historical-ticker').value;
+            
+            if (!isin || !ticker) {
+                alert('Errore: ISIN e Ticker sono entrambi obbligatori.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/historical/${isin}/${ticker}`);
+                const data = await response.json();
+
+                // Download JSON
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+                const downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href", dataStr);
+                downloadAnchorNode.setAttribute("download", "historical_data.json");
+                document.body.appendChild(downloadAnchorNode);
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
+                
+                // Create Chart
+                const ctx = document.getElementById('historical-chart').getContext('2d');
+                
+                const chartData = data.map(item => ({ x: item[0], y: item[1] }));
+
+                if (historicalChart) {
+                    historicalChart.destroy();
+                }
+
+                historicalChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: `Dati Storici per ${ticker}`,
+                            data: chartData,
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1,
+                            fill: false,
+                            radius: 0
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'day',
+                                    displayFormats: {
+                                        day: 'dd/MM/yyyy'
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+
+            } catch (error) {
+                alert(`Errore: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>
