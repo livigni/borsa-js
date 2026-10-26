@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const scraper = require('./scraper');
+const fred = require('./fred');
 
 const app = express();
 const port = 3000;
@@ -24,6 +25,19 @@ app.get('/api/historical/:isin/:ticker', async (req, res) => {
   const isin = req.params.isin;
   const ticker = req.params.ticker;
   const data = await scraper.getHistoricalData(isin, ticker);
+  res.json(data);
+});
+
+app.get('/api/fred', (req, res) => {
+  res.json(fred.FRED_SERIES);
+});
+
+app.get('/api/fred/:series', async (req, res) => {
+  const series = req.params.series;
+  const data = await fred.getFredSeries(series, req.query.from);
+  if (!data) {
+    return res.status(502).json({ error: `FRED series "${series}" not available` });
+  }
   res.json(data);
 });
 

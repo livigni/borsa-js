@@ -8,3 +8,6 @@ yarn-error.log*
 
 # Misc
 .DS_Store
+
+# Dati generati
+borsa.json
