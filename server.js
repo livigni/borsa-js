@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const scraper = require('./scraper');
 const fred = require('./fred');
+const yahoo = require('./yahoo');
 
 const app = express();
 const port = 3000;
@@ -37,6 +38,19 @@ app.get('/api/fred/:series', async (req, res) => {
   const data = await fred.getFredSeries(series, req.query.from);
   if (!data) {
     return res.status(502).json({ error: `FRED series "${series}" not available` });
+  }
+  res.json(data);
+});
+
+app.get('/api/yahoo', (req, res) => {
+  res.json(yahoo.YAHOO_SYMBOLS);
+});
+
+app.get('/api/yahoo/:symbol', async (req, res) => {
+  const symbol = req.params.symbol;
+  const data = await yahoo.getYahooChart(symbol, req.query.from);
+  if (!data) {
+    return res.status(502).json({ error: `Yahoo symbol "${symbol}" not available` });
   }
   res.json(data);
 });

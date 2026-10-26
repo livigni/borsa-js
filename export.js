@@ -1,9 +1,10 @@
-// Genera borsa.json con le serie FRED e gli storici di Borsa Italiana
+// Genera borsa.json con le serie FRED, i valori Yahoo Finance e gli storici di Borsa Italiana
 // usati dal cruscotto intermarket. Uso: npm run export
 const fs = require('fs');
 const path = require('path');
 const scraper = require('./scraper');
 const fred = require('./fred');
+const yahoo = require('./yahoo');
 
 // Titoli di Borsa Italiana da esportare: isin -> { ticker, type }
 const BORSA_ITALIANA = {
@@ -17,12 +18,20 @@ async function main() {
   fromDate.setMonth(fromDate.getMonth() - MONTHS_BACK);
   const from = fromDate.toISOString().slice(0, 10);
 
-  const out = { generato: new Date().toISOString(), da: from, fred: {}, borsaitaliana: {} };
+  const out = { generato: new Date().toISOString(), da: from, fred: {}, yahoo: {}, borsaitaliana: {} };
 
   for (const [id, title] of Object.entries(fred.FRED_SERIES)) {
     const data = await fred.getFredSeries(id, from);
     out.fred[id] = { titolo: title, ultimo: data && data.length ? data[data.length - 1] : null, dati: data || [] };
     console.log(`${id}: ${data ? data.length : 'errore'}`);
+  }
+
+  for (const [symbol, title] of Object.entries(yahoo.YAHOO_SYMBOLS)) {
+    const chart = await yahoo.getYahooChart(symbol, from);
+    out.yahoo[symbol] = chart
+      ? { titolo: title, valuta: chart.currency, prezzo: chart.price, ora: chart.time, dati: chart.data }
+      : { titolo: title, valuta: null, prezzo: null, ora: null, dati: [] };
+    console.log(`${symbol}: ${chart ? `${chart.price} alle ${chart.time}, ${chart.data.length} chiusure` : 'errore'}`);
   }
 
   for (const [isin, { ticker, type, name }] of Object.entries(BORSA_ITALIANA)) {
